@@ -613,9 +613,10 @@
      inherited white --tile-ink text color) here is only the fallback
      for the one tile with no real category — "All posts" (see
      renderGallery() in js/app.js) — every actual category tile
-     overrides both inline with catStyle() (js/app.js), the exact same
-     pale-background/tinted-text pill already used for the category tag
-     on post cards, so this rule's own background/color rarely show. */
+     overrides both inline with tileLabelStyle() (js/app.js): the same
+     pale-background/tinted-text pill used for the category tag on post
+     cards (catStyle(), same file), just with the background at 80%
+     opacity — so this rule's own background/color rarely show. */
   .cattile-label{
     display:inline-block; font-family:var(--font-sans); font-weight:600; font-size:12px; line-height:1.3;
     background:rgba(0,0,0,.05); border-radius:100px; padding:2px 8px;

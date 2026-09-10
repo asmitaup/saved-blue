@@ -421,6 +421,19 @@ function catStyle(cat){
   return `background:hsl(${h} ${sat} ${bgLight}); color:hsl(${h} ${inkSat} ${inkLight});`;
 }
 
+// The folder tile's own label pill (.cattile-label) — identical hue/
+// tone to catStyle() above (same tokens, same hueFor() hash, so a
+// category is still the same color everywhere), but with the
+// background at 80% opacity instead of fully opaque; the text stays
+// exactly as catStyle() would render it (fully opaque). Kept as its
+// own function rather than changing catStyle() itself so the post-card
+// pills it's also used for (catpill/collchip) are untouched.
+function tileLabelStyle(cat){
+  const h = hueFor(cat);
+  const { sat, bgLight, inkSat, inkLight } = getCatTokens();
+  return `background:hsla(${h}, ${sat}, ${bgLight}, 0.8); color:hsl(${h} ${inkSat} ${inkLight});`;
+}
+
 
 // ---------- Folder tile palette ----------
 // theme2: recolored to match a second Figma reference (node 29:143) —
@@ -612,7 +625,7 @@ function renderGallery(){
       <div class="folder-body">
         <div class="cattile-icon-chip"><div class="cattile-icon">${categoryIcon(c)}</div></div>
         <div class="cattile-bottom">
-          <div class="cattile-label" style="${catStyle(c)}">${escapeHtml(c)}</div>
+          <div class="cattile-label" style="${tileLabelStyle(c)}">${escapeHtml(c)}</div>
           <div class="cattile-count">${cnt[c].toLocaleString()} posts</div>
         </div>
       </div>
@@ -711,7 +724,7 @@ function renderSubgallery(){
         <div class="folder-body">
           <div class="cattile-icon-chip"><div class="cattile-icon">${categoryIcon(cat)}</div></div>
           <div class="cattile-bottom">
-            <div class="cattile-label" style="${catStyle(cat)}">${escapeHtml(cat)}</div>
+            <div class="cattile-label" style="${tileLabelStyle(cat)}">${escapeHtml(cat)}</div>
             <div class="cattile-count">${cnt[cat].toLocaleString()} posts</div>
           </div>
         </div>
