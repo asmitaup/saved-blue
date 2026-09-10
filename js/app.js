@@ -421,6 +421,34 @@ function catStyle(cat){
   return `background:hsl(${h} ${sat} ${bgLight}); color:hsl(${h} ${inkSat} ${inkLight});`;
 }
 
+// The folder tile's own label pill (.cattile-label) — same per-category
+// hue as catStyle() above (hueFor()), so a category reads as the same
+// color everywhere in the app, but a much darker/more saturated version
+// of it: catStyle()'s pale, light-card-friendly background (~93%
+// lightness) would all but disappear at 50% opacity over this theme's
+// medium-blue folder panel, and — per an explicit brief — the label
+// text stays fully opaque white, not tinted, so it needs the pill
+// itself to carry enough contrast on its own. --tile-label-sat/-light
+// (css/style.css) were picked by checking blended-contrast against the
+// panel's own gradient color for every hue in the hueFor() palette —
+// the worst case (teal) still clears 4.5:1 for white text at 50% fill.
+let tileLabelTokens = null;
+function getTileLabelTokens(){
+  if(tileLabelTokens) return tileLabelTokens;
+  const s = getComputedStyle(document.documentElement);
+  tileLabelTokens = {
+    sat: s.getPropertyValue('--tile-label-sat').trim() || '100%',
+    light: s.getPropertyValue('--tile-label-light').trim() || '18%',
+    alpha: s.getPropertyValue('--tile-label-alpha').trim() || '0.5',
+  };
+  return tileLabelTokens;
+}
+function tileLabelStyle(cat){
+  const h = hueFor(cat);
+  const { sat, light, alpha } = getTileLabelTokens();
+  return `background:hsla(${h}, ${sat}, ${light}, ${alpha});`;
+}
+
 // ---------- Folder tile palette ----------
 // theme2: recolored to match a second Figma reference (node 29:143) —
 // same fused-outline/front-panel path data as the original maroon
@@ -611,7 +639,7 @@ function renderGallery(){
       <div class="folder-body">
         <div class="cattile-icon-chip"><div class="cattile-icon">${categoryIcon(c)}</div></div>
         <div class="cattile-bottom">
-          <div class="cattile-label">${escapeHtml(c)}</div>
+          <div class="cattile-label" style="${tileLabelStyle(c)}">${escapeHtml(c)}</div>
           <div class="cattile-count">${cnt[c].toLocaleString()} posts</div>
         </div>
       </div>
@@ -710,7 +738,7 @@ function renderSubgallery(){
         <div class="folder-body">
           <div class="cattile-icon-chip"><div class="cattile-icon">${categoryIcon(cat)}</div></div>
           <div class="cattile-bottom">
-            <div class="cattile-label">${escapeHtml(cat)}</div>
+            <div class="cattile-label" style="${tileLabelStyle(cat)}">${escapeHtml(cat)}</div>
             <div class="cattile-count">${cnt[cat].toLocaleString()} posts</div>
           </div>
         </div>

@@ -78,6 +78,20 @@
     --cat-ink-sat:   60%;
     --cat-ink-light: 26%;
 
+    /* Color — the folder tile's own label pill (.cattile-label, see
+       tileLabelStyle() in js/app.js) — same per-category hue as the
+       tokens above, but deliberately NOT the same lightness: those are
+       pale backgrounds meant for dark text on a light card; this pill
+       sits on the folder's medium-blue panel with fully-opaque WHITE
+       text (an explicit brief — the text isn't tinted, only the pill
+       fill is translucent), so it needs a dark, saturated color to
+       read at 50% opacity. Checked against the panel's own gradient
+       color for every hue in hueFor()'s palette — the worst case
+       (teal) still clears 4.5:1 for white text at this alpha. */
+    --tile-label-sat:   100%;
+    --tile-label-light: 18%;
+    --tile-label-alpha: 0.5;
+
     /* Color — gallery tile backgrounds (--tile-color etc.) come from a
        fixed named palette instead, set inline per tile — see
        TILE_PALETTE in js/app.js. */
@@ -608,9 +622,12 @@
     50%{transform:rotate(0.7deg);}
   }
   .cattile.reorderable:not(.dragging){animation:cattile-jiggle .26s ease-in-out infinite;}
-  /* A pill, not plain text — per the Figma spec: rgba(0,0,0,.05) chip,
-     full-pill radius, Inter/Hanken Semibold 12px. This is a real
-     typographic change from the previous large serif label. */
+  /* A pill, not plain text — per the Figma spec: full-pill radius,
+     Inter/Hanken Semibold 12px. The rgba(0,0,0,.05) background here is
+     only the fallback for the one tile with no real category — "All
+     posts" (see renderGallery() in js/app.js) — every actual category
+     tile overrides it inline with its own color (tileLabelStyle(),
+     same file), so this rule's own background rarely shows. */
   .cattile-label{
     display:inline-block; font-family:var(--font-sans); font-weight:600; font-size:12px; line-height:1.3;
     background:rgba(0,0,0,.05); border-radius:100px; padding:2px 8px;
