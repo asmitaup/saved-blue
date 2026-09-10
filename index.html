@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Saved — your Instagram archive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Fraunces for headings/brand; Hanken Grotesk for body — a free,
+     properly-hinted Graphik look-alike (similar geometric-grotesque
+     proportions), since Graphik itself is a commercial typeface not
+     installed on this Mac and not something to source a copy of. -->
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Hanken+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
+<!-- ?v= is a cache-buster — bumped every time style.css/app.js change,
+     so a phone (especially the installed PWA) can't keep serving a
+     stale copy from before the latest edit. -->
+<link rel="stylesheet" href="css/style.css?v=t4" />
+
+<!-- PWA: lets you "Add to Home Screen" on your phone for an app-like icon
+     that opens full-screen, no browser address bar. -->
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#148DE4" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<!-- "black-translucent" (the original's setting) makes the iOS status
+     bar's own clock/battery icons white — fine on a dark header, but
+     invisible against this theme's light glass one. "default" keeps
+     them dark instead. -->
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Saved" />
+</head>
+<body>
+
+<!-- Shared clip-path shapes for the frosted-glass folder-paper overlays
+     (see .paper-glass-a/b/c in style.css, folderPapersGlass() in
+     app.js). clipPathUnits="objectBoundingBox" makes these coordinates
+     fractions (0-1) of whatever element references them, so one
+     definition here works correctly for every tile at any size in this
+     fluid grid — no per-tile duplication needed. Each path is the
+     EXACT paper shape from Figma (node 29:143's Rectangle 15/10/14),
+     normalized to 0-1 by dividing every coordinate by that shape's own
+     width/height. A plain CSS border-radius was tried first and didn't
+     match — Figma's corners are a bezier curve, not a circular arc, so
+     an approximated radius left a visible sliver of mismatch at the
+     corners once actual pixel positions were compared (confirmed: the
+     glass div's bounding box was pixel-identical to the SVG path's own
+     bounding box, so the mismatch was purely the corner curve shape,
+     not a sizing/position bug). -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <clipPath id="paper-clip-a" clipPathUnits="objectBoundingBox">
+      <path d="M0.00001 0.10428C-0.00073 0.04640 0.03867 -0.00077 0.08710 0.00001L0.91522 0.01335C0.96274 0.01412 1.00072 0.06084 0.99999 0.11764L0.98985 0.89888C0.98912 0.95498 0.95086 1.00000 0.90392 1.00000L0.09609 1.00000C0.04914 1.00000 0.01087 0.95496 0.01016 0.89886L0.00001 0.10428Z"/>
+    </clipPath>
+    <clipPath id="paper-clip-b" clipPathUnits="objectBoundingBox">
+      <path d="M0.00001 0.10445C-0.00073 0.04657 0.03436 -0.00069 0.07756 0.00001L0.92429 0.01365C0.96677 0.01433 1.00073 0.06119 0.99999 0.11812L0.98985 0.89909C0.98912 0.95511 0.95503 1.00000 0.91323 1.00000L0.08679 1.00000C0.04497 1.00000 0.01088 0.95509 0.01016 0.89907L0.00001 0.10445Z"/>
+    </clipPath>
+    <clipPath id="paper-clip-c" clipPathUnits="objectBoundingBox">
+      <path d="M0.00001 0.10458C-0.00073 0.04668 0.03185 -0.00064 0.07199 0.00001L0.92960 0.01382C0.96913 0.01445 1.00073 0.06141 0.99999 0.11842L0.98985 0.89923C0.98912 0.95519 0.95747 1.00000 0.91867 1.00000L0.08135 1.00000C0.04254 1.00000 0.01088 0.95517 0.01016 0.89921L0.00001 0.10458Z"/>
+    </clipPath>
+  </defs>
+</svg>
+
+<div id="screen-splash" class="splash">
+  <div class="splash-inner">
+    <h1 class="splash-brand">Saved<span>.</span></h1>
+    <div class="splash-sub">your Instagram archive</div>
+  </div>
+</div>
+
+<div id="screen-gallery" class="screen" hidden>
+  <div class="gallery-bg" aria-hidden="true"></div>
+  <div class="topbar topbar-glass">
+    <div class="topbar-row">
+      <h1 class="brand" id="brandTrigger">Saved<span>.</span></h1>
+      <div class="topbar-meta">
+        <div class="stat"><b id="stat-total">0</b> posts · <b id="stat-cats">0</b> categories</div>
+        <div class="syncstat" id="syncStat"></div>
+      </div>
+    </div>
+  </div>
+  <div class="catgrid" id="catgrid"></div>
+</div>
+
+<div id="screen-subgallery" class="screen" hidden>
+  <div class="gallery-bg" aria-hidden="true"></div>
+  <div class="topbar topbar-glass">
+    <div class="breadcrumb-row">
+      <button type="button" class="backbtn" id="backFromSubgallery" aria-label="Back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="breadcrumb-stack">
+        <nav class="breadcrumb" id="subgalleryBreadcrumb" aria-label="Breadcrumb"></nav>
+        <h2 id="subgalleryTitle">Category</h2>
+      </div>
+    </div>
+  </div>
+  <div class="catgrid" id="subgrid"></div>
+</div>
+
+<div id="screen-detail" class="screen" hidden>
+  <div class="topbar">
+    <div class="breadcrumb-row">
+      <button type="button" class="backbtn" id="backToGallery" aria-label="Back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="breadcrumb-stack">
+        <nav class="breadcrumb" id="detailBreadcrumb" aria-label="Breadcrumb"></nav>
+        <div class="detail-heading">
+          <h2 id="detailTitle">Category</h2>
+          <span class="detail-count" id="detailCount"></span>
+        </div>
+      </div>
+    </div>
+    <div class="viewswitch" id="viewSwitch">
+      <button type="button" class="viewbtn active" data-cols="list" aria-label="List view">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+      </button>
+      <button type="button" class="viewbtn" data-cols="two" aria-label="Two column view">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="16" rx="1.5"/><rect x="13" y="4" width="8" height="16" rx="1.5"/></svg>
+      </button>
+      <button type="button" class="viewbtn" data-cols="grid" aria-label="Grid view">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="3" width="6" height="6" rx="1"/><rect x="3" y="15" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/></svg>
+      </button>
+    </div>
+    <div class="searchwrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="search" id="search" placeholder="Search captions, tags, accounts…" />
+    </div>
+    <div class="topbar-tools">
+      <label class="autotoggle">
+        <input type="checkbox" id="autoPreviewToggle" checked />
+        Auto-load previews while scrolling
+      </label>
+      <button type="button" class="triagetoggle" id="triageToggle">Select multiple</button>
+    </div>
+  </div>
+
+  <div class="feed cols-1" id="feed"></div>
+  <button class="loadmore" id="loadmore" style="display:none;">Show more</button>
+</div>
+
+<div class="sheet-backdrop" id="sheetBackdrop">
+  <div class="sheet">
+    <h3 id="sheetTitle">Move to category</h3>
+    <div id="sheetOptions"></div>
+    <div class="sheet-new">
+      <input type="text" id="newCatInput" placeholder="New category name" />
+      <button id="newCatBtn">Add</button>
+    </div>
+    <button class="sheet-close" id="sheetClose">Cancel</button>
+  </div>
+</div>
+
+<div class="sheet-backdrop" id="vaultBackdrop">
+  <div class="sheet">
+    <h3 id="vaultTitle">Enter password</h3>
+    <p class="vault-note" id="vaultNote" hidden></p>
+    <input type="password" id="vaultPassword" class="vault-input" placeholder="Password" autocomplete="off" />
+    <input type="password" id="vaultPasswordConfirm" class="vault-input" placeholder="Confirm password" style="display:none;" autocomplete="off" />
+    <p class="vault-error" id="vaultError" hidden></p>
+    <button type="button" class="vault-submit" id="vaultSubmit">Unlock</button>
+    <button type="button" class="vault-forgot" id="vaultForgot" hidden>Forgot password?</button>
+    <button type="button" class="sheet-close" id="vaultCancel">Cancel</button>
+  </div>
+</div>
+
+<div class="triagebar" id="triagebar" hidden>
+  <div class="triagebar-row">
+    <span class="triagebar-count" id="triageCount">0 selected</span>
+    <div class="triagebar-linkgroup">
+      <button type="button" class="triagebar-link" id="selectAllBtn">Select all</button>
+      <button type="button" class="triagebar-link" id="clearSelBtn">Clear</button>
+    </div>
+  </div>
+  <button type="button" class="triagebar-move" id="bulkMoveBtn" disabled>Move to category</button>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/sync-meta.js"></script>
+<script src="js/app.js?v=t6"></script>
+</body>
+</html>

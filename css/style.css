@@ -1,0 +1,771 @@
+  /* ============================================================
+     Design tokens
+     Single source of truth for color, type, spacing, radius and
+     shadow. Everything below should reference these instead of
+     hardcoding literals — that's what makes this a design system
+     rather than a pile of CSS.
+
+     Spacing/type tokens are named by their pixel value (not an
+     abstract scale index) because they capture the exact rhythm
+     already used across the app — naming them didn't change a
+     single visual value, it just gave the repeated ones a home.
+     One-off literals (icon sizes, layout breakpoints, max-widths)
+     are left as plain numbers below since they're fixed component/
+     layout dimensions, not part of the spacing rhythm.
+     ============================================================ */
+  :root{
+    /* Color — surface. theme2: light mode — white page, black-ish
+       text — instead of the original's dark maroon. --bg is a hair
+       off pure white (not #FFF) so the blurred blobs in .gallery-bg
+       and the glass panels floating over them (see .topbar-glass,
+       .sheet, .card) have something to visibly differentiate against;
+       true #FFF behind white glass is indistinguishable from no glass
+       at all. --paper is pure white — the flat (non-glass) card/input
+       surface color. */
+    --bg:      #F4F7FB;
+    --paper:   #FFFFFF;
+    --overlay: rgba(15,23,32,0.4); /* modal backdrop, derived from --ink */
+
+    /* Color — ink (text & icons). Near-black, not a warm brown like
+       the original — "black text" was explicit in the brief. */
+    --ink:         #12161C;
+    --ink-soft:    #55606C;
+    --ink-faint:   #8993A1;
+    --ink-on-dark: #F2F6FB; /* text sitting on a rare remaining dark surface */
+
+    /* Color — borders */
+    --line: #E1E7EF;
+
+    /* Color — accent (the folder-tile blue, #148DE4 — see TILE_GRAD_END
+       in js/app.js, so the folder color and the rest of the UI's links/
+       focus states are drawn from the same blue, not two unrelated ones) */
+    --accent:      #148DE4;
+    --accent-soft: #E3F2FD;
+    --accent-ink:  #0B6FB8;
+
+    /* Color — secondary (soft periwinkle, the second ambient glass blob) */
+    --sage:      #8FA6E8;
+    --sage-soft: #E7ECFC;
+    --sage-ink:  #4A5FA8;
+
+    /* Color — glass. One shared recipe for every "frosted" surface
+       (topbar, sheets, triagebar, cards) so they all read as the same
+       material rather than each inventing its own translucency. */
+    --glass-bg:     rgba(255,255,255,0.62);
+    --glass-bg-strong: rgba(255,255,255,0.78);
+    --glass-border: rgba(255,255,255,0.6);
+    --glass-blur:   blur(20px) saturate(180%);
+    --glass-shadow: 0 4px 24px rgba(15,23,42,0.08);
+
+    /* Color — category badges (pale pill on a post's category tag,
+       and now also each collection/subcategory tag — see catStyle()
+       in js/app.js). Hue varies per category/collection (hashed) but
+       saturation/lightness are fixed — exposed here as tokens and
+       read at runtime via getComputedStyle so the JS-generated colors
+       and the CSS system can't drift apart.
+       theme2: bumped noticeably more vivid than the original's 55%/
+       93%/45%/28% — those were tuned against a warm cream card
+       (--paper) sitting on a dark maroon page, where even a pale
+       93%-lightness pastel read as clearly tinted by contrast with
+       its surroundings. Here the card itself is near-white glass on a
+       near-white page, and 93% lightness pastels (RGB roughly
+       227-247 on every channel) are close enough to indistinguishable
+       from plain white and from each other — confirmed on screen, not
+       just in theory. Every hue at these values still clears 4.5:1
+       text contrast (worst case ~5.2:1, most ~6+). */
+    --cat-sat:       75%;
+    --cat-bg-light:  82%;
+    --cat-ink-sat:   60%;
+    --cat-ink-light: 26%;
+
+    /* Color — gallery tile backgrounds (--tile-color etc.) come from a
+       fixed named palette instead, set inline per tile — see
+       TILE_PALETTE in js/app.js. */
+
+    /* Typography — Fraunces (serif) for headings/brand, Hanken Grotesk
+       (a free Graphik look-alike) for body text. Both loaded via
+       Google Fonts in index.html. */
+    --font-sans:  'Hanken Grotesk', system-ui, sans-serif;
+    --font-serif: 'Fraunces', serif;
+    --text-2xs:      11px;
+    --text-xs:       12px;
+    --text-xs-plus:  12.5px;
+    --text-sm:       13px;
+    --text-md:       14px;
+    --text-base:     15px;
+    --text-lg:       16px;
+    --text-xl:       22px;
+    --text-2xl:      28px;
+
+    /* Spacing */
+    --space-2:  2px;
+    --space-3:  3px;
+    --space-4:  4px;
+    --space-5:  5px;
+    --space-6:  6px;
+    --space-7:  7px;
+    --space-8:  8px;
+    --space-9:  9px;
+    --space-10: 10px;
+    --space-11: 11px;
+    --space-12: 12px;
+    --space-13: 13px;
+    --space-14: 14px;
+    --space-15: 15px;
+    --space-16: 16px;
+    --space-18: 18px;
+    --space-20: 20px;
+    --space-22: 22px;
+    --space-24: 24px;
+
+    /* Radius */
+    --radius-sm:   8px;
+    --radius-md:   10px;
+    --radius-lg:   14px;
+    --radius-xl:   18px;
+    --radius-pill: 20px;
+
+    /* Elevation */
+    --shadow-sm: 0 1px 2px rgba(43,38,32,0.06);
+    --shadow-up: 0 -2px 8px rgba(43,38,32,0.08); /* bars fixed to the bottom edge */
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    /* A soft sitewide ambient gradient (not just the concentrated blobs
+       on .gallery-bg) — glass surfaces need SOME depth/color behind
+       them everywhere, including the detail feed's .card grid, which
+       has no .gallery-bg layer of its own. */
+    background:
+      radial-gradient(at 12% -8%, var(--accent-soft) 0%, transparent 45%),
+      radial-gradient(at 92% 105%, var(--sage-soft) 0%, transparent 45%),
+      var(--bg);
+    background-attachment:fixed;
+    color:var(--ink);
+    font-family:var(--font-sans);
+    font-size:var(--text-base);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:calc(64px + env(safe-area-inset-bottom)); /* fixed offset, not part of the spacing rhythm */
+  }
+  body.triage-active{padding-bottom:calc(150px + env(safe-area-inset-bottom));} /* room for the fixed triagebar */
+  /* The Instagram embed is a cross-origin iframe — clicks inside it
+     never bubble out to .card's own click handler at all, so most of
+     the card (wherever the preview has loaded) was dead space for
+     selecting. Switch it off while selecting so those clicks fall
+     through to the card underneath instead. */
+  body.triage-active .previewbox{ pointer-events:none; }
+  h1,h2,h3{font-family:var(--font-serif);font-weight:500;margin:0;}
+  a{color:inherit;}
+  button, select, input{font-family:inherit;}
+
+  /* ---------- Splash screen ---------- */
+  .splash{
+    position:fixed; inset:0; z-index:200;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--bg); cursor:pointer;
+  }
+  .splash[hidden]{display:none;}
+  .splash-inner{text-align:center; animation:splash-in .6s ease-out;}
+  /* theme2: --bg is now light, so this needs the usual dark --ink —
+     the original used --paper/--ink-on-dark here because its --bg was
+     a dark maroon. */
+  .splash-brand{font-size:40px; letter-spacing:-0.01em; color:var(--ink);}
+  .splash-brand span{color:var(--accent);}
+  .splash-sub{margin-top:var(--space-8); font-size:var(--text-sm); color:var(--ink-soft); letter-spacing:.02em;}
+  @keyframes splash-in{
+    from{opacity:0; transform:translateY(6px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+
+  .screen[hidden]{display:none;}
+
+  .topbar{
+    position:sticky; top:0; z-index:30;
+    /* theme2: glass, not a solid black bar — the original's #0A0A0A
+       only worked because that theme deliberately kept the detail
+       screen dark while the rest went light-glass; here everything is
+       glass, so this uses the same shared recipe (see --glass-* in
+       :root) as .topbar-glass below instead of its own one-off. */
+    background:var(--glass-bg);
+    backdrop-filter:var(--glass-blur);
+    -webkit-backdrop-filter:var(--glass-blur);
+    box-shadow:var(--glass-shadow);
+    /* Installed as a PWA, the iOS status bar is set to "black-translucent"
+       (content draws under the notch/clock/battery) — without this, the
+       heading sits behind it and looks cut off. Falls back to the normal
+       16px on browsers/devices without a safe-area inset (i.e. everywhere
+       else), so this is a no-op outside standalone PWA mode. */
+    padding:calc(var(--space-16) + env(safe-area-inset-top)) var(--space-16) var(--space-10);
+    border-bottom:1px solid var(--glass-border);
+  }
+  .topbar-row{display:flex; align-items:flex-start; justify-content:space-between; gap:var(--space-8); margin-bottom:var(--space-12);}
+  .brand{
+    font-size:var(--text-xl); letter-spacing:-0.01em;
+    user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:none;
+  }
+  .brand span{color:var(--accent);}
+  .topbar-meta{display:flex; flex-direction:column; align-items:flex-end; gap:2px;}
+  .stat{font-size:var(--text-xs); color:var(--ink-soft); text-align:right;}
+  .stat b{color:var(--ink-soft); font-weight:600;}
+  /* Nudges you to re-export/re-import periodically — see
+     tools/import_saved_posts.py, which stamps this on every run. */
+  .syncstat{font-size:var(--text-2xs); color:var(--ink-soft); text-align:right;}
+
+  /* The gallery screen's own header — shorter than the subgallery/detail
+     ones (which need room for a back button, search, etc.), so it's
+     scoped to #screen-gallery rather than changing .topbar generally.
+     content-box so the 48px is the visible bar itself; the iOS notch/
+     status-bar clearance is added on top via padding, not eaten from it. */
+  #screen-gallery .topbar{
+    box-sizing:content-box; height:48px;
+    padding:env(safe-area-inset-top) var(--space-16) 0;
+    display:flex; align-items:center;
+  }
+  #screen-gallery .topbar-row{ width:100%; margin-bottom:0; }
+
+  /* theme2: the detail screen's .topbar is glass now too (see above),
+     not a solid black bar — the default --ink/--accent colors already
+     read fine on it, so the original's forced light-text overrides
+     for this screen (--ink-on-dark everywhere) are gone entirely. */
+
+  .breadcrumb-row{display:flex; align-items:flex-start; gap:var(--space-8); margin-bottom:var(--space-12);}
+  .backbtn{
+    background:none; border:none; padding:2px; margin:1px 0 0 -2px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    color:var(--accent);
+  }
+  .backbtn svg{width:20px; height:20px;}
+  .breadcrumb-stack{min-width:0; flex:1;}
+  /* The trail (ancestors only, e.g. "Categories › Travel") — small,
+     each segment clickable except none here since the current page is
+     the big heading below instead of the trail's own last crumb. */
+  .breadcrumb{
+    display:flex; align-items:center; flex-wrap:wrap; gap:3px;
+    font-size:var(--text-xs); margin-bottom:2px; min-height:16px;
+  }
+  .breadcrumb .crumb{
+    background:none; border:none; padding:0; font:inherit; cursor:pointer;
+    color:var(--accent-ink);
+  }
+  .breadcrumb .crumb:hover{ text-decoration:underline; }
+  .breadcrumb .crumb-sep{ width:11px; height:11px; opacity:.5; flex-shrink:0; }
+  .detail-heading{display:flex; align-items:baseline; justify-content:space-between; gap:var(--space-8);}
+  .detail-heading h2{font-size:var(--text-xl); letter-spacing:-0.01em;}
+  .breadcrumb-stack > h2{font-size:var(--text-xl); letter-spacing:-0.01em;}
+  .detail-count{font-size:var(--text-xs); color:var(--ink-faint); white-space:nowrap;}
+
+  .viewswitch{display:flex; gap:var(--space-6); margin-bottom:var(--space-12);}
+  .viewbtn{
+    flex:1; padding:var(--space-7) 0; border-radius:var(--radius-pill); border:1px solid var(--glass-border);
+    background:var(--glass-bg);
+    backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);
+    color:var(--ink-soft);
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .viewbtn svg{width:17px; height:17px;}
+  .viewbtn.active{background:var(--accent); border-color:var(--accent); color:#FFFFFF;}
+
+  .searchwrap{position:relative; margin-bottom:var(--space-12);}
+  .searchwrap svg{position:absolute; left:12px; top:50%; transform:translateY(-50%); width:16px; height:16px; stroke:var(--ink-faint);}
+  input[type="search"]{
+    width:100%; padding:var(--space-10) var(--space-12) var(--space-10) 34px;
+    border:1px solid var(--glass-border); border-radius:var(--radius-md);
+    background:var(--glass-bg);
+    backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);
+    color:var(--ink); font-size:var(--text-md);
+    outline:none;
+  }
+  input[type="search"]:focus{border-color:var(--accent);}
+
+  .topbar-tools{
+    display:flex; align-items:center; justify-content:space-between; gap:var(--space-8);
+    margin-top:var(--space-10);
+  }
+  .autotoggle{
+    display:flex; align-items:center; gap:var(--space-6); font-size:var(--text-xs); color:var(--ink-faint);
+    user-select:none;
+  }
+  .autotoggle input{width:14px; height:14px;}
+  .triagetoggle{
+    background:none; border:none; padding:0; cursor:pointer;
+    font-size:var(--text-xs); color:var(--accent-ink); font-weight:500; white-space:nowrap;
+  }
+  .triagetoggle.active{color:var(--ink-soft);}
+
+  /* ---------- Category gallery (landing page) ---------- */
+  /* Soft blurred color behind the glass topbar/tiles — glassmorphism needs
+     something with depth to show through the translucency, a flat backdrop
+     just reads as plain grey. Fixed behind the scrolling grid. */
+  #screen-gallery{position:relative;}
+  /* theme2: two large, soft blurred color blobs (blue + periwinkle,
+     the same hues as --accent/--sage) fixed behind the scrolling
+     grid — glassmorphism needs actual depth/color behind a translucent
+     panel for the blur to read as anything; a flat single-color --bg
+     under white glass looks identical to no glass at all. */
+  .gallery-bg{
+    position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none;
+  }
+  .gallery-bg::before, .gallery-bg::after{
+    content:''; position:absolute; border-radius:50%; filter:blur(60px);
+  }
+  .gallery-bg::before{
+    width:70vw; height:70vw; max-width:520px; max-height:520px;
+    top:-15vw; right:-20vw;
+    background:radial-gradient(circle, var(--accent-soft) 0%, transparent 70%);
+    opacity:.9;
+  }
+  .gallery-bg::after{
+    width:60vw; height:60vw; max-width:460px; max-height:460px;
+    bottom:-10vw; left:-18vw;
+    background:radial-gradient(circle, var(--sage-soft) 0%, transparent 70%);
+    opacity:.9;
+  }
+
+  /* Glass header (gallery + subgallery) — the shared --glass-* recipe,
+     same as .topbar (see above); default --ink/--accent text already
+     reads fine on it, so no color overrides are needed the way the
+     original's black wash needed --ink-on-dark everywhere. */
+  .topbar-glass{
+    position:sticky; z-index:30;
+    background:var(--glass-bg);
+    backdrop-filter:var(--glass-blur);
+    -webkit-backdrop-filter:var(--glass-blur);
+    border-bottom:1px solid var(--glass-border);
+    box-shadow:var(--glass-shadow);
+  }
+
+  .catgrid{
+    position:relative; z-index:1;
+    padding:var(--space-16); margin:0 auto; max-width:1400px;
+    display:grid; gap:var(--space-16);
+    /* Fluid 2 columns, uncapped, for anything up to 664px (see the
+       breakpoint below) — tiles stretch to fill exactly whatever
+       width is available, so the edges land on exactly 16px no
+       matter how wide the phone is. .cattile has NO max-width of its
+       own below this breakpoint (see .cattile) specifically to avoid
+       a real bug this app shipped with: capping the tile at 200px
+       while the track itself (an uncapped `1fr`) grew past 200px on
+       a wider phone. Once a tile has a definite width (100%, then
+       clamped by max-width) it's no longer eligible for stretch
+       alignment, so it sat stuck to the START of its own oversized
+       track — leaving 30–100px of dead space against the right edge
+       of every card, compounding with the real gap/padding to make
+       the right side dramatically wider than the left (confirmed at
+       a 516px viewport: 16px left edge, 50px right). Tying the cap to
+       the same breakpoint that switches to the fixed-column grid
+       below means a track can never be wider than a tile while this
+       fluid rule is active — there's nothing to grow past. */
+    grid-template-columns:repeat(2, 1fr);
+  }
+  @media (min-width:664px){
+    .catgrid{
+      /* 200px is a cap here, not a forced size — auto-fill just packs
+         as many full 200px tiles per row as fit. */
+      grid-template-columns:repeat(auto-fill, 200px);
+      /* Leftover space in a row (once column count is fixed) pools on
+         one side by default — center it instead so it splits evenly. */
+      justify-content:center;
+    }
+  }
+
+  /* Plain flat bar for "All posts" — it's the everything-escape-hatch, not
+     a category, so it deliberately doesn't look like one: no folder
+     shape, just a 40px row. theme2: a light accent-blue tint (glass
+     panels are white, so this needs to be a real, different-from-bg
+     hue to read at all, same reasoning as the original's pink tint —
+     just re-picked from the new blue palette instead of red). */
+  .allbar{
+    grid-column:1 / -1; height:40px; border-radius:var(--radius-md);
+    background:rgba(20,141,228,.1); border:1px solid rgba(20,141,228,.18);
+    display:flex; align-items:center; gap:var(--space-10);
+    padding:0 var(--space-14); cursor:pointer; color:var(--ink);
+  }
+  .allbar .cattile-icon{color:var(--accent-ink);}
+  .allbar .cattile-label{font-size:var(--text-md);}
+  .allbar .cattile-count{margin-left:auto; color:var(--ink-soft);}
+
+  /* Sub-category list (subgallery screen, category branch only — the
+     vault's subgallery still uses the card grid below, since those are
+     separate locked categories rather than children of one folder).
+     Root row (the category itself, flush left) then each sub-category
+     indented under a hooked "into" arrow — an indented list rather than
+     a card grid. */
+  .catgrid.sublist{
+    display:flex; flex-direction:column; gap:0;
+    padding:0; margin:0 auto; max-width:640px;
+  }
+  .sublist-row{
+    position:relative;
+    display:flex; align-items:center; gap:var(--space-10);
+    padding:var(--space-12) var(--space-16);
+    cursor:pointer;
+    border-bottom:1px solid var(--line);
+  }
+  .sublist-row:last-child{ border-bottom:none; }
+  .sublist-row--sub{ padding-left:52px; }
+  .sublist-arrow{
+    position:absolute; left:20px; top:50%; transform:translateY(-50%);
+    width:16px; height:16px; color:var(--ink-faint); flex-shrink:0;
+  }
+  /* Folder icon + label, 4px apart, as one horizontal unit. */
+  .sublist-iconlabel{
+    display:flex; align-items:center; gap:4px; min-width:0; flex:1;
+  }
+  .sublist-icon{ width:34px; flex-shrink:0; aspect-ratio:199.667 / 181.943; }
+  .sublist-icon .folder-svg{
+    width:100%; height:100%; display:block;
+    filter:drop-shadow(0 1px 3px rgba(0,0,0,.18));
+  }
+  .sublist-label{
+    font-size:var(--text-md); font-weight:500; color:var(--ink);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .sublist-count{
+    font-size:var(--text-sm); color:var(--ink-faint);
+    margin-left:auto; flex-shrink:0; padding-left:var(--space-10);
+  }
+  .sublist-chevron{ width:16px; height:16px; color:var(--ink-faint); flex-shrink:0; }
+
+  /* Folder-shaped category tile — recolored blue to match a second
+     Figma reference (node 29:143), with a genuinely different layer
+     structure from the original, not just new colors — see the
+     palette comment above folderSvg() in js/app.js. Label/count/icon
+     sit directly on the panel, no separate floating card.
+       .folder-svg  — the folder silhouette (outline + papers + front)
+       .folder-body — layout-only wrapper for icon/label/count; no
+                      background/border/shadow of its own
+     --tile-grad-start/--tile-grad-end/--tile-ink are set inline —
+     see js/app.js. */
+  .cattile{
+    position:relative; width:100%; aspect-ratio:1; cursor:pointer;
+    color:var(--tile-ink, #FFFFFF);
+  }
+  /* The 200px cap only applies once .catgrid switches to its fixed
+     auto-fill grid at the same breakpoint (see .catgrid) — below that,
+     .cattile is meant to fill its fluid track exactly, uncapped. */
+  @media (min-width:664px){
+    .cattile{ max-width:200px; }
+  }
+  .cattile .folder-svg{
+    position:absolute; inset:0; width:100%; height:100%; display:block;
+    filter:drop-shadow(0 3px 6px rgba(0,0,0,.18));
+  }
+  .cattile .folder-body{
+    /* Outer box sits right at the front panel's own edges (Figma:
+       panel starts ~32% down, ~1% in from each side) — the actual
+       visual inset for the icon comes from the uniform padding below,
+       so its top-gap and left-gap from the panel are identical by
+       construction, not two independently-guessed percentages. */
+    position:absolute; top:32%; left:1%; right:1%; bottom:2%;
+    padding:var(--space-14);
+    overflow:hidden;
+    display:flex; flex-direction:column; justify-content:space-between; align-items:flex-start;
+    text-align:left;
+  }
+
+  .cattile-icon-chip{
+    display:inline-flex; padding:6px; border-radius:9px;
+    /* Figma spec (node 29:143): rgba(255,255,255,0.3) — a frosted-glass
+       chip on the blue panel, not the old dark 10%-black tint. */
+    background:rgba(255,255,255,.3);
+  }
+  .cattile-icon{width:20px; height:20px; opacity:.95; position:relative; z-index:1;}
+  .cattile-icon svg{width:100%; height:100%;}
+  .cattile-bottom{position:relative; z-index:1; display:flex; flex-direction:column; gap:2px; margin-top:auto;}
+
+  /* The real frosted-glass paper stack (folderPapersGlass() in
+     js/app.js) — three backdrop-blurred divs laid directly over the
+     SVG folder beneath them, clipped to the EXACT Figma paper shape
+     (the shared clip-path defs in index.html's hidden <svg>, not an
+     approximated border-radius — that left a visible mismatch sliver
+     right at the corners, confirmed by comparing this div's rendered
+     bounding box to the underlying SVG path's own: identical position
+     and size, so the mismatch was purely the corner curve, a circular
+     border-radius arc vs. Figma's actual bezier corner). Each pair is
+     a crop window (sized to the sliver actually visible above the
+     front panel, overflow:hidden) around a fill div sized to the
+     paper's true full height — the clip-path's objectBoundingBox units
+     scale to fit whatever box references them, so clipping the short
+     crop window directly would squash the curve; clipping the
+     full-height fill first and then cropping THAT keeps it
+     proportioned correctly. Percentages throughout, not px, so this
+     stays correctly proportioned as the tile's own width changes (it's
+     a fluid grid). Each successive one (a→c) is a little more opaque,
+     matching the papers getting less blue-tinted from back to front in
+     the Figma reference. */
+  .folder-papers-glass{ position:absolute; inset:0; pointer-events:none; z-index:1; }
+  .paper-glass-crop{ position:absolute; overflow:hidden; }
+  .paper-glass-fill{
+    position:absolute; top:0; left:0; width:100%;
+    backdrop-filter:blur(6px) saturate(160%);
+    -webkit-backdrop-filter:blur(6px) saturate(160%);
+  }
+  /* .paper-glass-fill's height% resolves against ITS OWN containing
+     block — the crop div, not the tile — so these are the fill's true
+     percent-of-tile height (58.5%-ish, see the comment above) rescaled
+     as a percentage of the much-shorter crop box it actually sits in
+     (crop height / tile ≈ 17%/14%/9%), not 58% again. */
+  .paper-glass-crop-a{ left:14.524%; top:14.840%; width:69.930%; height:17.038%; }
+  .paper-glass-fill-a{ height:343.432%; background:rgba(255,255,255,.4);  clip-path:url(#paper-clip-a); }
+  .paper-glass-crop-b{ left:10.518%; top:18.138%; width:78.422%; height:13.741%; }
+  .paper-glass-fill-b{ height:425.917%; background:rgba(255,255,255,.55); clip-path:url(#paper-clip-b); }
+  .paper-glass-crop-c{ left:7.513%;  top:22.535%; width:84.416%; height:9.344%; }
+  .paper-glass-fill-c{ height:626.408%; background:rgba(255,255,255,.72); clip-path:url(#paper-clip-c); }
+  /* Fades out with the icon (same keyframe, see folder-icon-fade below)
+     rather than joining the tap-open motion itself — the SVG's own
+     solid-color papers underneath (folder-paper-1/-2) already do the
+     slide, and animating both at once would double up/fight visually. */
+  .cattile.opening .folder-papers-glass{
+    animation:folder-icon-fade .38s ease-out forwards;
+  }
+
+  /* Tapping a tile: the front panel (.folder-front, see folderSvg()
+     in js/app.js) is hinged at its own bottom edge, and two of the
+     three .folder-paper rects (already visible at rest in this
+     theme — see folderSvg()) slide further up from behind it. Two
+     earlier attempts at the flap itself:
+     (1) split the front into two copies that skewed apart into a flat
+     "V" (closer to the stylized Dribbble reference this was modeled
+     on) — skewX+scaleY has no real hinge to it, so it read as the
+     flap vertically squashing down rather than a cover opening; (2) a
+     true 3D lift (perspective()+rotateX() around the bottom edge) —
+     which is the physically-correct fix for that, but this SVG is
+     stretched non-uniformly to fill a square tile from its own
+     non-square viewBox (preserveAspectRatio="none"), and a real 3D
+     rotation inside that already-skewed coordinate space rendered as
+     a lopsided trapezoid, not a clean tip-back. So this is 2D again,
+     but unlike attempt (1): scaleY shrink is paired with an upward
+     translateY large enough that the WHOLE flap (both its hinge edge
+     and its far edge) visibly rises as it shrinks, instead of just the
+     far edge drooping down toward a fixed hinge — reading as "picked
+     up and folded back" rather than "collapsing in place". The tile
+     itself still lifts and scales up — see animateTileOpenThenNavigate()
+     in js/app.js, which delays the actual screen change to match this
+     animation's duration. The category icon has no role in the
+     "opening" motion, so it fades out early (see folder-icon-fade) —
+     an instant cut (no transition at all) was tried first, but it made
+     the flap's own motion read as if it were snapping specifically to
+     hide the icon, rather than an icon fading out on its own; a smooth
+     fade over the animation's first stretch avoids that. */
+  @keyframes folder-icon-fade{
+    0%{ opacity:1; }
+    45%{ opacity:0; }
+    100%{ opacity:0; }
+  }
+  .cattile.opening .cattile-icon-chip{
+    animation:folder-icon-fade .38s ease-out forwards;
+  }
+  @keyframes folder-open-tile{
+    0%{ transform:translateY(0) scale(1); opacity:1; }
+    70%{ transform:translateY(-6px) scale(1.05); opacity:1; }
+    100%{ transform:translateY(-3px) scale(1.08); opacity:0; }
+  }
+  @keyframes folder-flap-open{
+    0%{ transform:translateY(0) scaleY(1); }
+    100%{ transform:translateY(-42px) scaleY(.58); opacity:.88; }
+  }
+  /* No opacity change here (unlike the original, where these papers
+     started fully hidden) — theme2's papers are already visible at
+     rest, so animating opacity from 0 would make them flicker
+     invisible-then-back-in right as the tap lands. Just the slide. */
+  @keyframes folder-paper-peek{
+    0%{ transform:translateY(0); }
+    100%{ transform:translateY(-42px); }
+  }
+  /* The flap and papers finish most of their motion early (ease-out)
+     so they're clearly visible for a beat before the tile-level fade
+     (which holds at full opacity until 70%, see folder-open-tile
+     above) takes over — layering the fade on top of a still-mid-lift
+     flap muddied the effect instead of reading as "the folder opened
+     and is now navigating away". */
+  .cattile.opening{
+    animation:folder-open-tile .38s ease-in forwards;
+    z-index:5;
+  }
+  .cattile.opening .folder-front{
+    transform-box:fill-box; transform-origin:50% 100%;
+    animation:folder-flap-open .38s ease-out forwards;
+  }
+  .cattile.opening .folder-paper-1{
+    animation:folder-paper-peek .38s ease-out forwards;
+  }
+  .cattile.opening .folder-paper-2{
+    animation:folder-paper-peek .38s ease-out .04s both;
+  }
+
+  /* Reorder mode (gallery screen only) */
+  .cattile.reorderable{cursor:grab; touch-action:none;}
+  .cattile.dragging{opacity:.25;}
+  .cattile-ghost{
+    position:fixed; top:0; left:0; z-index:1000; pointer-events:none;
+    transform-origin:center; box-shadow:0 20px 40px rgba(43,38,32,.35);
+    border-radius:var(--radius-lg); opacity:.96;
+  }
+  @keyframes cattile-jiggle{
+    0%, 100%{transform:rotate(-0.7deg);}
+    50%{transform:rotate(0.7deg);}
+  }
+  .cattile.reorderable:not(.dragging){animation:cattile-jiggle .26s ease-in-out infinite;}
+  /* A pill, not plain text — per the Figma spec: rgba(0,0,0,.05) chip,
+     full-pill radius, Inter/Hanken Semibold 12px. This is a real
+     typographic change from the previous large serif label. */
+  .cattile-label{
+    display:inline-block; font-family:var(--font-sans); font-weight:600; font-size:12px; line-height:1.3;
+    background:rgba(0,0,0,.05); border-radius:100px; padding:2px 8px;
+  }
+  .cattile-count{font-family:var(--font-sans); font-weight:300; font-size:10px; opacity:.9; white-space:nowrap;}
+
+  /* ---------- Post feed (detail screen) ---------- */
+  .feed{
+    padding:var(--space-14) var(--space-16) 0; margin:0 auto; max-width:1400px;
+    display:grid; grid-template-columns:1fr; gap:var(--space-12);
+  }
+  @media (min-width:560px){ .feed{ grid-template-columns:repeat(2, 1fr); } }
+  @media (min-width:900px){ .feed{ grid-template-columns:repeat(3, 1fr); } }
+  @media (min-width:1300px){ .feed{ grid-template-columns:repeat(4, 1fr); } }
+
+  /* Explicit density overrides for the view switcher. Each mode forces its
+     own column count outright — none of them fall back to the plain .feed
+     rule above, which only grows past 1 column above 560px. Without this,
+     "Grid" looked identical to "List" on any phone-width screen. Higher
+     specificity than the responsive rules above wins at every breakpoint. */
+  .feed.cols-1{ grid-template-columns:1fr; }
+  .feed.cols-2{ grid-template-columns:repeat(2, 1fr); }
+  .feed.cols-grid{ grid-template-columns:repeat(3, 1fr); gap:var(--space-8); }
+  @media (min-width:900px){ .feed.cols-grid{ grid-template-columns:repeat(4, 1fr); } }
+  @media (min-width:1300px){ .feed.cols-grid{ grid-template-columns:repeat(5, 1fr); } }
+  /* Tighter card padding in the denser views — more of the small card is media, less border. */
+  .feed.cols-2 .card, .feed.cols-grid .card{ padding:var(--space-8); }
+
+  .empty{
+    text-align:center; padding:60px 20px; color:var(--ink-faint);
+  }
+  .card{
+    /* theme2: glass, not a flat --paper card — part of "glass effect
+       throughout", and it lets the ambient blobs (.gallery-bg) show
+       through faintly even on the feed screen where that layer isn't
+       present, via the --bg tint showing through the translucency. */
+    background:var(--glass-bg-strong);
+    backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);
+    border:1px solid var(--glass-border); border-radius:var(--radius-lg);
+    padding:var(--space-14) var(--space-15); box-shadow:var(--shadow-sm); display:flex; flex-direction:column;
+    position:relative; aspect-ratio:1; min-width:0; /* min-width:0 prevents a loaded embed's intrinsic width from forcing uneven grid columns */
+  }
+  .card.selectable{cursor:pointer;}
+  .card.selected{border-color:var(--accent); background:var(--accent-soft);}
+  .card-select{
+    position:absolute; top:var(--space-10); left:var(--space-10); z-index:2;
+    width:18px; height:18px; accent-color:var(--accent); cursor:pointer;
+  }
+  .card.selectable .card-bottom{padding-left:26px;} /* room for the checkbox overlay */
+  .caption{font-size:var(--text-md); color:var(--ink); white-space:pre-line; margin-bottom:var(--space-10);}
+  .card-bottom{
+    display:flex; align-items:center; justify-content:space-between; gap:var(--space-8);
+    flex-wrap:nowrap; flex-shrink:0;
+  }
+  .catpill{
+    font-size:var(--text-xs); line-height:1; padding:var(--space-3) var(--space-10); border-radius:var(--radius-sm); border:1px solid transparent;
+    cursor:pointer; font-weight:500; white-space:nowrap; flex-shrink:1; min-width:0;
+    overflow:hidden; text-overflow:ellipsis;
+  }
+  .collchips{display:flex; gap:var(--space-4); flex-wrap:nowrap; overflow:hidden;}
+  /* theme2: border is transparent, not --line — the inline catStyle()
+     background/color (js/app.js) carries the color now, and a neutral
+     grey border on top of a colored pill looked muted/inconsistent
+     with how .catpill (no border at all) presents the same colors. */
+  .collchip{font-size:var(--text-2xs); line-height:1; color:var(--ink-faint); border:1px solid transparent; padding:var(--space-3) var(--space-7); border-radius:var(--radius-sm); white-space:nowrap; flex-shrink:0;}
+  .openlink{color:var(--accent-ink); display:inline-flex; align-items:center; text-decoration:none; flex-shrink:0;}
+  .openlink svg{width:17px; height:17px;}
+  .previewbox{
+    margin-top:var(--space-10); border-radius:var(--radius-md);
+    position:relative; width:100%; flex:1; min-height:0; background:var(--paper);
+    display:flex; align-items:center; justify-content:center;
+  }
+  /* Only clipped once the embed has actually loaded and been measured (see
+     fitEmbedToSquare in app.js). Clipping from the start — before
+     Instagram's resize logic has run — stops it from ever resizing past
+     its placeholder height; it seems to use a visibility/intersection
+     check that a small overflow:hidden ancestor defeats. The card itself
+     (not this frame) is the square — this just fills whatever space is
+     left in it below the category/actions row. */
+  .previewbox.fitted{overflow:hidden;}
+  .previewstatus{font-size:var(--text-xs-plus); color:var(--ink-faint); padding:var(--space-10); text-align:center; border:1px dashed var(--line); border-radius:var(--radius-md);}
+  /* The embed iframe itself — positioned and scaled directly via JS
+     (fitEmbedToSquare in app.js) to crop out Instagram's header/footer
+     chrome and fill the card's frame with just the media. */
+  .embed-frame{border:none; display:block;}
+  .previewbox.fitted .embed-frame{position:absolute; top:0; left:0; transform-origin:top left;}
+
+  .catrow{display:flex; align-items:center; gap:var(--space-6); flex-wrap:nowrap; overflow:hidden; min-width:0; flex:1;}
+
+  .loadmore{
+    display:block; margin:var(--space-8) auto 24px; padding:var(--space-10) 22px; border-radius:var(--radius-pill);
+    border:1px solid var(--line); background:var(--paper); color:var(--ink-soft); font-size:var(--text-sm);
+  }
+
+  .sheet-backdrop{
+    position:fixed; inset:0; background:var(--overlay); z-index:100;
+    display:none; align-items:flex-end; justify-content:center;
+  }
+  .sheet-backdrop.open{display:flex;}
+  .sheet{
+    background:var(--glass-bg-strong);
+    backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);
+    border:1px solid var(--glass-border); border-bottom:none;
+    width:100%; max-width:640px; border-radius:var(--radius-xl) var(--radius-xl) 0 0;
+    padding:var(--space-18) var(--space-18) calc(26px + env(safe-area-inset-bottom)); max-height:70vh; overflow-y:auto;
+  }
+  .sheet h3{font-size:var(--text-lg); margin-bottom:var(--space-12);}
+  .sheet-opt{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:var(--space-11) var(--space-4); border-bottom:1px solid var(--line); font-size:var(--text-md); cursor:pointer;
+  }
+  .sheet-opt:last-child{border-bottom:none;}
+  .sheet-opt .n{color:var(--ink-faint); font-size:var(--text-xs);}
+  .sheet-new{display:flex; gap:var(--space-8); margin-top:var(--space-12);}
+  .sheet-new input{flex:1; padding:var(--space-9) var(--space-10); border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--paper);}
+  .sheet-new button{padding:var(--space-9) var(--space-14); border-radius:var(--radius-sm); border:none; background:var(--ink); color:var(--paper); font-size:var(--text-sm); font-weight:500;}
+  .sheet-close{display:block; width:100%; text-align:center; padding:var(--space-10); margin-top:var(--space-10); color:var(--ink-faint); font-size:var(--text-sm); background:none; border:none;}
+
+  .vault-note{font-size:var(--text-xs-plus); color:var(--ink-faint); margin:calc(-1 * var(--space-8)) 0 var(--space-12);}
+  .vault-input{
+    width:100%; padding:var(--space-10) var(--space-12); border:1px solid var(--line); border-radius:var(--radius-md);
+    background:var(--paper); color:var(--ink); font-size:var(--text-md); margin-top:var(--space-10); outline:none;
+  }
+  .vault-input:focus{border-color:var(--accent);}
+  .vault-error{font-size:var(--text-xs-plus); color:var(--accent-ink); margin:var(--space-8) 0 0;}
+  .vault-submit{
+    display:block; width:100%; margin-top:var(--space-14); padding:var(--space-12);
+    border-radius:var(--radius-md); border:none; background:var(--ink); color:var(--paper);
+    font-size:var(--text-md); font-weight:600; cursor:pointer;
+  }
+  .vault-forgot{
+    display:block; width:100%; text-align:center; margin-top:var(--space-12);
+    background:none; border:none; padding:0; color:var(--accent-ink); font-size:var(--text-xs-plus); cursor:pointer;
+  }
+  .vault-forgot[hidden]{display:none;}
+
+  .triagebar{
+    position:fixed; left:0; right:0; bottom:0; z-index:40;
+    background:var(--glass-bg-strong);
+    backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);
+    border-top:1px solid var(--glass-border); box-shadow:var(--shadow-up);
+    padding:var(--space-10) var(--space-16) calc(var(--space-10) + env(safe-area-inset-bottom));
+  }
+  .triagebar-row{
+    display:flex; align-items:center; justify-content:space-between; gap:var(--space-8);
+    margin-bottom:var(--space-8); font-size:var(--text-xs-plus);
+  }
+  .triagebar-count{font-weight:600; color:var(--ink);}
+  .triagebar-linkgroup{display:flex; gap:var(--space-12);}
+  .triagebar-link{
+    background:none; border:none; padding:0; cursor:pointer;
+    color:var(--accent-ink); font-weight:500; font-size:var(--text-xs-plus); white-space:nowrap;
+  }
+  .triagebar-move{
+    display:block; width:100%; padding:var(--space-12); border-radius:var(--radius-md); border:none;
+    background:var(--ink); color:var(--paper); font-size:var(--text-md); font-weight:600; cursor:pointer;
+  }
+  .triagebar-move:disabled{opacity:.4; cursor:default;}
