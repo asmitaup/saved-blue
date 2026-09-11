@@ -1445,44 +1445,103 @@ function parseCollectionsHtml(text){
 }
 
 // ---- JSON export parsing (best-effort) ----
-// Instagram's JSON "saved" export is much sparser than the HTML one — no
-// caption or hashtags, just the owner's username, the post link, and a
-// timestamp — so posts imported from JSON lean on the collections-based
-// guess or fall into "Uncategorized" far more often. HTML stays the
-// recommended format (see the import sheet's own copy); this exists for
-// people who already have a JSON export and don't want to re-request one.
-// The exact key names below match Instagram's export as of when this was
-// written — Instagram has changed this shape before, so a few plausible
-// alternate keys are tried too, and an empty result surfaces a clear
-// "try HTML instead" message rather than silently importing nothing.
+// Instagram's actual "saved" JSON export (confirmed against a real export,
+// 2026-09) is a flat array of post objects shaped like:
+//   { timestamp, media: [...], fbid, label_values: [
+//       { label:"URL", value:"https://www.instagram.com/reel/XXXX/", href:"..." },
+//       { label:"Caption", value:"..." },
+//       { label:"Title", value:"" },
+//       { title:"Hashtags", dict:[...] },
+//       { title:"Owner", dict:[ { title:"", dict:[
+//           { label:"URL", value },{ label:"Name", value },{ label:"Username", value } ] } ] },
+//       { title:"Brand partner", dict:[...] },
+//   ] }
+// — a label_values array of {label,value} pairs, plus nested {title,dict}
+// sections for Hashtags/Owner. Genuinely has a caption (contrary to an
+// earlier, wrong assumption baked into this parser — an older guess at a
+// completely different, sparser shape), so JSON categorization can be
+// just as good as HTML's. Instagram has changed export shapes before, so
+// a couple of alternate top-level keys are still tried as a fallback, and
+// an empty result surfaces a clear "try HTML instead" message rather than
+// silently importing nothing.
 function importShortcodeFromHref(href){
   const m = /instagram\.com\/(p|reel)\/([A-Za-z0-9_-]+)/.exec(href || '');
   return m ? { type: m[1], shortcode: m[2] } : null;
 }
+// Instagram's JSON export double-encodes non-ASCII text: real UTF-8 bytes
+// got \u-escaped one byte at a time (so a "'" — UTF-8 bytes E2 80 99 —
+// shows up as literal â instead of one ’). JSON.parse
+// already turned each of those escapes into its own JS character (code
+// points 0xE2, 0x80, 0x99); this rebuilds the original UTF-8 byte sequence
+// from those and decodes it properly. Only touches strings that are
+// entirely in that "each char is actually a raw byte" range — real
+// already-correct unicode text (every other field in this app) is left
+// alone rather than risk corrupting it.
+function importFixMojibake(s){
+  if(!s) return s;
+  for(let i = 0; i < s.length; i++){ if(s.charCodeAt(i) > 255) return s; }
+  try{
+    const bytes = Uint8Array.from(s, c => c.charCodeAt(0));
+    return new TextDecoder('utf-8', { fatal: false }).decode(bytes) || s;
+  }catch(e){ return s; }
+}
+function importFindLabelValue(items, label){
+  if(!items) return undefined;
+  const hit = items.find(it => it.label === label);
+  return hit ? hit.value : undefined;
+}
+function importFindSection(items, title){
+  if(!items) return undefined;
+  const hit = items.find(it => it.title === title);
+  return hit ? hit.dict : undefined;
+}
 function parsePostsJson(obj){
-  const arr = obj.saved_saved_media || obj.saved_media || obj.saved_posts || (Array.isArray(obj) ? obj : []) || [];
+  const arr = Array.isArray(obj) ? obj : (obj.saved_saved_media || obj.saved_media || obj.saved_posts || []);
   const found = {};
   for(const entry of arr){
-    const owner = entry.title || '';
-    const list = entry.string_list_data || entry.media_list_data || [];
-    for(const item of list){
-      const hit = importShortcodeFromHref(item.href);
-      if(!hit || found[hit.shortcode]) continue;
-      const date = item.timestamp ? new Date(item.timestamp * 1000).toUTCString() : '';
-      found[hit.shortcode] = { type: hit.type, caption: '', hashtags: [], owner, date };
+    const lv = entry.label_values || [];
+    const urlEntry = lv.find(it => it.label === 'URL');
+    const href = urlEntry ? (urlEntry.href || urlEntry.value) : '';
+    const hit = importShortcodeFromHref(href);
+    if(!hit || found[hit.shortcode]) continue;
+    const caption = importFixMojibake(importFindLabelValue(lv, 'Caption') || '');
+    // The "Hashtags" section's own shape wasn't confirmed (empty in every
+    // sample post seen) — hashtags already appear as plain "#word" text
+    // inside the caption itself, which the category matcher scans anyway,
+    // so pulling them back out with a regex is a reliable, shape-agnostic
+    // stand-in rather than guessing at an unconfirmed nested structure.
+    const hashtags = (caption.match(/#[\wÀ-ɏЀ-ӿ]+/g) || []).map(h => h.slice(1));
+    let owner = '';
+    const ownerDict = importFindSection(lv, 'Owner');
+    if(ownerDict && ownerDict.length){
+      const inner = ownerDict[0].dict || [];
+      owner = importFixMojibake(importFindLabelValue(inner, 'Username') || importFindLabelValue(inner, 'Name') || '');
     }
+    const date = entry.timestamp ? new Date(entry.timestamp * 1000).toUTCString() : '';
+    found[hit.shortcode] = { type: hit.type, caption, hashtags, owner, date };
   }
   return found;
 }
 function parseCollectionsJson(obj){
-  const arr = obj.collections_saved_collections || obj.collections || (Array.isArray(obj) ? obj : []) || [];
+  // Not confirmed against a real export (only the posts shape was) — tries
+  // the same label_values/dict pattern posts use, plus the older flat-key
+  // guess, and simply returns nothing usable if neither matches. Harmless
+  // either way: collections only sharpen the category guess, and posts
+  // import fine without them.
+  const arr = Array.isArray(obj) ? obj : (obj.collections_saved_collections || obj.collections || []);
   const shortcodeToCollections = {};
   for(const coll of arr){
-    const name = (coll.string_map_data && coll.string_map_data.Name && coll.string_map_data.Name.value) || coll.name || '';
+    const lv = coll.label_values || [];
+    const name = importFixMojibake(
+      importFindLabelValue(lv, 'Name') || coll.name ||
+      (coll.string_map_data && coll.string_map_data.Name && coll.string_map_data.Name.value) || ''
+    );
     if(!name) continue;
-    const items = coll.string_list_data || coll.media_list_data || coll.saved_media || [];
+    const items = coll.string_list_data || coll.media_list_data || coll.saved_media ||
+      (importFindSection(lv, 'Saved media') || importFindSection(lv, 'Media') || []);
     for(const item of items){
-      const hit = importShortcodeFromHref(item.href);
+      const href = item.href || item.value || (item.label_values && importFindLabelValue(item.label_values, 'URL'));
+      const hit = importShortcodeFromHref(href);
       if(!hit) continue;
       const arr2 = shortcodeToCollections[hit.shortcode] || (shortcodeToCollections[hit.shortcode] = []);
       if(!arr2.includes(name)) arr2.push(name);
@@ -1627,11 +1686,9 @@ function renderImportSummary(added, skipped, tally, wasHtml){
   }
   const rows = Object.entries(tally).sort((a, b) => b[1] - a[1])
     .map(([cat, n]) => `<div class="import-tally-row"><span>${escapeHtml(cat)}</span><span>${n.toLocaleString()}</span></div>`).join('');
-  const jsonNote = wasHtml ? '' : `<p class="import-note">This was a JSON export, so these new posts have less to go on (no captions or hashtags) — expect more of them in "Uncategorized" than usual.</p>`;
   return `
     <p><b>${added.toLocaleString()}</b> new post${added === 1 ? '' : 's'} added${skipped ? ` (${skipped.toLocaleString()} were already in your archive)` : ''}.</p>
     <div class="import-tally">${rows}</div>
-    ${jsonNote}
     <p class="import-note">New posts land in a rough guessed category — sort any "Uncategorized" ones with <b>Select multiple</b> on that category's post list.</p>
   `;
 }
