@@ -1707,8 +1707,14 @@ async function handleImportFiles(fileList){
     statusEl.textContent = "That's a zip file — unzip it first, then drop saved_posts.html (or .json) here.";
     return;
   }
-  const collectionsFiles = files.filter(f => /collection/i.test(f.name));
-  const postsFiles = files.filter(f => !/collection/i.test(f.name));
+  // The /collection/i filename split only makes sense when telling two
+  // files apart in one drop — with a single file there's nothing to tell
+  // it apart FROM, so it's always the posts file, whatever its name says
+  // (a file renamed to work around a picker's extension filtering, e.g.,
+  // won't reliably keep "posts" in its name). Only misclassify a lone
+  // file as "collections" if it's dropped alongside something else.
+  const collectionsFiles = files.length > 1 ? files.filter(f => /collection/i.test(f.name)) : [];
+  const postsFiles = files.length > 1 ? files.filter(f => !/collection/i.test(f.name)) : files;
   if(postsFiles.length === 0){
     statusEl.textContent = "Couldn't find a saved posts file — drop saved_posts.html (or .json), not just the collections file.";
     return;
